@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leprechaun's Gold Streak II - Free Game Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5016 50%, #1a472a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            color: #fff;
+        }
+        .header { text-align: center; margin-bottom: 10px; }
+        .header h1 {
+            font-size: 1.4em;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .controls {
+            display: flex; gap: 15px; align-items: center;
+            margin-bottom: 15px; flex-wrap: wrap; justify-content: center;
+        }
+        .controls label { font-size: 0.9em; color: #ccc; }
+        .controls select {
+            padding: 8px 12px; border-radius: 6px;
+            border: 2px solid #ffd700; background: #2a2a2a;
+            color: #ffd700; font-size: 0.9em; cursor: pointer;
+        }
+        .game-info {
+            display: flex; gap: 20px; align-items: center;
+            margin-bottom: 10px; font-size: 1em;
+        }
+        .game-info span {
+            background: rgba(0,0,0,0.4);
+            padding: 5px 12px; border-radius: 4px;
+        }
+        .jackpot-bar { display: flex; gap: 10px; margin-bottom: 10px; }
+        .jackpot-item {
+            padding: 5px 15px; border-radius: 6px;
+            font-weight: bold; font-size: 0.85em; text-align: center;
+        }
+        .jp-grand { background: linear-gradient(180deg, #ffd700, #b8860b); }
+        .jp-mega { background: linear-gradient(180deg, #ff4444, #cc0000); }
+        .jp-major { background: linear-gradient(180deg, #9b59b6, #6c3483); }
+        .jp-minor { background: linear-gradient(180deg, #3498db, #2471a3); }
+        .jp-mini { background: linear-gradient(180deg, #27ae60, #1e8449); }
+
+        /* Board & Reel System */
+        .board-container {
+            position: relative;
+            background: linear-gradient(180deg, #1a3a2a, #0d1f15);
+            border: 4px solid #8b6914;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 0 30px rgba(255,215,0,0.3), inset 0 0 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .board {
+            display: flex;
+            gap: 4px;
+        }
+        .reel {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        .reel-inner {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .cell {
+            width: 100px;
+            height: 90px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            position: relative;
+            border: 2px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .cell .sym-text {
+            text-align: center;
+            line-height: 1.2;
+            font-size: 1em;
+            pointer-events: none;
+        }
+
+        /* BINGO highlight animation */
+        .cell.bingo {
+            border: 3px solid #ffd700 !important;
+            box-shadow: 0 0 15px #ffd700, 0 0 30px rgba(255,215,0,0.5);
+            animation: bingo-pop 0.6s ease-in-out;
+            z-index: 10;
+        }
+        @keyframes bingo-pop {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.15); }
+            60% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        /* Symbol colors */
+        .sym-10, .sym-J, .sym-Q, .sym-K, .sym-A {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: #a8d8ea;
+        }
+        .sym-mushroom { background: linear-gradient(135deg, #2c3e50, #34495e); color: #ff6b6b; }
+        .sym-harp { background: linear-gradient(135deg, #2c3e50, #34495e); color: #ffd700; }
+        .sym-horseshoe { background: linear-gradient(135deg, #2c3e50, #34495e); color: #f0c040; }
+        .sym-wild {
+            background: linear-gradient(135deg, #ff0000, #ff8c00, #ffff00, #00ff00, #0000ff, #8b00ff);
+            color: #fff; text-shadow: 1px 1px 2px #000;
+        }
+        .sym-cash-bronze { background: linear-gradient(135deg, #8b4513, #a0522d); color: #ffd700; }
+        .sym-cash-silver { background: linear-gradient(135deg, #708090, #a9a9a9); color: #fff; }
+        .sym-cash-gold { background: linear-gradient(135deg, #b8860b, #ffd700); color: #fff; text-shadow: 1px 1px 2px #000; }
+        .sym-collect { background: linear-gradient(135deg, #27ae60, #2ecc71); color: #fff; border: 2px solid #ffd700; }
+        .sym-collect-gold { background: linear-gradient(135deg, #f39c12, #f1c40f); color: #fff; border: 2px solid #ff6600; text-shadow: 1px 1px 2px #000; }
+        .sym-plus-spin { background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; }
+        .sym-blast-v, .sym-blast-9 { background: linear-gradient(135deg, #e67e22, #d35400); color: #fff; }
+
+        .multiplier-badge {
+            position: absolute; top: -6px; right: -6px;
+            background: #ff6600; color: #fff;
+            font-size: 0.55em; padding: 2px 6px;
+            border-radius: 10px; z-index: 10;
+            font-weight: bold;
+        }
+
+        .btn-spin {
+            margin-top: 15px; padding: 12px 40px;
+            font-size: 1.1em; font-weight: bold;
+            background: linear-gradient(180deg, #ffd700, #ff8c00);
+            color: #1a1a1a; border: none; border-radius: 25px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-spin:hover { transform: scale(1.05); box-shadow: 0 0 15px #ffd700; }
+        .btn-spin:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .log {
+            margin-top: 15px; width: 100%; max-width: 700px;
+            max-height: 150px; overflow-y: auto;
+            background: rgba(0,0,0,0.5); border-radius: 8px;
+            padding: 10px; font-size: 0.85em; color: #aaa;
+        }
+        .log-entry { margin-bottom: 3px; }
+        .log-entry.collect { color: #2ecc71; }
+        .log-entry.feature { color: #ffd700; }
+        .log-entry.blast { color: #e67e22; }
+
+        .explosion-effect {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle, rgba(255,165,0,0.9), transparent);
+            border-radius: 8px;
+            animation: explode 0.6s ease-out forwards;
+            pointer-events: none; z-index: 5;
+        }
+        @keyframes explode {
+            0% { transform: scale(0.3); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
+</style>
+</head>
+<body>
+    <div class="header">
+        <h1>🍀 Leprechaun's Gold Streak II — Free Game Demo</h1>
+    </div>
+    <div class="controls">
+        <label for="mode-select">特色模式：</label>
+        <select id="mode-select">
+            <option value="expand">① EXPAND（盤面擴張）</option>
+            <option value="multiplier">② MULTIPLIER（乘倍效果）</option>
+            <option value="blast">③ BLAST（爆炸產生Cash）</option>
+            <option value="all">④ 三特色同時觸發</option>
+        </select>
+        <label for="demo-select">腳本：</label>
+        <select id="demo-select">
+            <option value="random">隨機模式</option>
+            <option value="expand-weak">EXPAND 弱</option>
+            <option value="expand-normal">EXPAND 一般</option>
+            <option value="expand-strong">EXPAND 強</option>
+            <option value="multi-weak">MULTIPLIER 弱</option>
+            <option value="multi-normal">MULTIPLIER 一般</option>
+            <option value="multi-strong">MULTIPLIER 強</option>
+            <option value="blast-weak">BLAST 弱</option>
+            <option value="blast-normal">BLAST 一般</option>
+            <option value="blast-strong">BLAST 強</option>
+            <option value="all-weak">三特色 弱</option>
+            <option value="all-normal">三特色 一般</option>
+            <option value="all-strong">三特色 強</option>
+        </select>
+        <button class="btn-spin" id="btn-start" onclick="startFreeGame()">開始 Free Game</button>
+    </div>
+    <div class="jackpot-bar">
+        <div class="jackpot-item jp-grand">🎁 GRAND<br>1,000</div>
+        <div class="jackpot-item jp-mega">🎁 MEGA<br>200</div>
+        <div class="jackpot-item jp-major">🎁 MAJOR<br>50</div>
+        <div class="jackpot-item jp-minor">🎁 MINOR<br>20</div>
+        <div class="jackpot-item jp-mini">🎁 MINI<br>10</div>
+    </div>
+    <div class="game-info">
+        <span id="info-spins">剩餘手數：-</span>
+        <span id="info-mode">模式：-</span>
+        <span id="info-win">收集總分：0</span>
+    </div>
+    <div class="board-container">
+        <div class="board" id="board"></div>
+    </div>
+    <button class="btn-spin" id="btn-spin" onclick="doSpin()" disabled>SPIN</button>
+    <div class="log" id="log"></div>
+<script>
+// === Game State ===
+let state = {
+    mode: 'expand',
+    rows: 3,
+    cols: 5,
+    spinsLeft: 0,
+    totalWin: 0,
+    board: [],       // [row][col]
+    multipliers: [], // [row][col] = multiplier value (0=none)
+    isSpinning: false,
+    gameActive: false,
+    demoMode: null,  // null = random, or script name
+    demoSpinIndex: 0
+};
+
+// === DEMO Scripts ===
+// Each script: array of 5 spins, each spin is [row][col] with cell values
+// '?' = random normal symbol, number = cash value, 'collect' = collector
+const DEMO_SCRIPTS = {
+    'expand-weak': {
+        mode: 'expand',
+        spins: [
+            // Spin 1: 收集=0 (無collect)
+            [['?','2','?','?','?'],
+             ['0.5','2','?','?','?'],
+             ['0.5','?','8','1','?'],
+             ['2','?','?','0.5','?'],
+             ['5','?','?','0.5','?']],
+            // Spin 2: 收集=0 (無collect)
+            [['?','5','?','?','?'],
+             ['3','?','?','?','?'],
+             ['1','?','2','?','?'],
+             ['?','?','?','1','?'],
+             ['?','?','?','?','?']],
+            // Spin 3: 收集=10
+            [['1','?','3','?','?'],
+             ['0.5','?','2','?','?'],
+             ['1','?','0.5','?','collect'],
+             ['?','?','1','?','?'],
+             ['?','?','0.5','0.5','?']],
+            // Spin 4: 收集=0 (無collect)
+            [['?','?','?','?','?'],
+             ['15','?','?','?','?'],
+             ['?','?','?','?','?'],
+             ['?','?','0.5','?','?'],
+             ['?','?','0.5','?','?']],
+            // Spin 5: 收集=0 (有collect但無cash)
+            [['?','?','?','?','collect'],
+             ['?','?','?','?','collect'],
+             ['?','?','?','?','collect'],
+             ['?','?','?','?','?'],
+             ['?','?','?','?','?']]
+        ]
+    },
+    'expand-normal': {
+        mode: 'expand',
+        spins: [
+            // Spin 1
+            [['?','?','?','?','?'],
+             ['0.5','?','?','?','collect'],
+             ['1','?','?','?','?'],
+             ['2','?','?','0.5','?'],
+             ['?','?','?','3','?']],
+            // Spin 2
+            [['?','20','2','10','?'],
+             ['?','2','8','0.5','?'],
+             ['?','0.5','?','0.5','?'],
+             ['?','0.5','?','1','?'],
+             ['?','?','?','2','?']],
+            // Spin 3
+            [['?','?','?','1','?'],
+             ['3','0.5','?','?','?'],
+             ['2','0.5','?','?','?'],
+             ['?','1','?','?','collect'],
+             ['?','1','?','?','collect']],
+            // Spin 4
+            [['2','?','?','?','?'],
+             ['0.5','?','?','10','?'],
+             ['1','?','?','3','?'],
+             ['1','?','?','3','?'],
+             ['1','?','?','?','?']],
+            // Spin 5
+            [['?','?','?','?','?'],
+             ['?','3','?','?','?'],
+             ['0.5','2','0.5','?','?'],
+             ['0.5','1','1','?','?'],
+             ['0.5','?','0.5','1','?']]
+        ]
+    },
+    'expand-strong': {
+        mode: 'expand',
+        spins: [
+            // Spin 1: 收集=7 (行2有collect)
+            [['?','?','?','?','?'],
+             ['0.5','?','?','?','collect'],
+             ['1','?','?','?','?'],
+             ['2','?','?','0.5','?'],
+             ['?','?','?','3','?']],
+            // Spin 2: 收集=0 (無collect)
+            [['?','20','2','10','?'],
+             ['?','2','8','0.5','?'],
+             ['?','0.5','?','0.5','?'],
+             ['?','0.5','?','1','?'],
+             ['?','?','?','2','?']],
+            // Spin 3: 收集=18 (行4,5有collect)
+            [['?','?','?','1','?'],
+             ['3','0.5','?','?','?'],
+             ['2','0.5','?','?','?'],
+             ['?','1','?','?','collect'],
+             ['?','1','?','?','collect']],
+            // Spin 4: 收集=21.5 (行4有collect)
+            [['2','?','?','?','?'],
+             ['0.5','?','?','10','?'],
+             ['1','?','?','3','?'],
+             ['1','?','?','3','collect'],
+             ['1','?','?','?','?']],
+            // Spin 5: 收集=21 (行2,3有collect)
+            [['?','?','?','?','?'],
+             ['?','3','?','?','collect'],
+             ['0.5','2','0.5','?','collect'],
+             ['0.5','1','1','?','?'],
+             ['0.5','?','0.5','1','?']]
+        ]
+    },
+    'multi-weak': {
+        mode: 'multiplier',
+        spins: [
+            [['?','2','?','?','?'],
+             ['2','?','?','0.5','?'],
+             ['5','?','?','0.5','?']],
+            [['?','5','?','?','?'],
+             ['?','?','?','1','?'],
+             ['?','?','?','?','?']],
+            [['1','?','3','?','?'],
+             ['?','?','0.5','?','?'],
+             ['?','?','?','1','collect']],
+            [['?','?','8','?','?'],
+             ['?','?','0.5','?','?'],
+             ['?','?','0.5','?','?']],
+            [['?','?','?','?','collect'],
+             ['?','?','?','?','?'],
+             ['?','?','?','?','?']]
+        ],
+        multiplierGrids: [
+            [[1,1,1,1,1],[1,2,1,1,1],[2,1,1,1,1]],
+            [[1,1,1,1,1],[1,4,2,1,1],[2,1,1,1,1]],
+            [[1,1,2,1,1],[1,4,2,1,1],[2,1,1,2,1]],
+            [[1,1,2,1,1],[1,7,2,1,1],[2,1,1,2,1]],
+            [[1,1,2,1,1],[1,10,2,1,1],[2,1,1,3,1]]
+        ]
+    },
+    'multi-normal': {
+        mode: 'multiplier',
+        spins: [
+            [['?','?','?','?','?'],
+             ['0.5','?','?','?','collect'],
+             ['?','?','?','3','?']],
+            [['?','20','2','10','?'],
+             ['?','2','8','0.5','?'],
+             ['?','?','?','2','?']],
+            [['?','?','?','1','?'],
+             ['3','0.5','?','?','?'],
+             ['?','1','?','?','?']],
+            [['?','?','?','?','?'],
+             ['?','?','?','?','?'],
+             ['?','?','?','?','?']],
+            [['?','?','?','?','collect'],
+             ['?','3','?','?','?'],
+             ['0.5','?','0.5','1','?']]
+        ],
+        multiplierGrids: [
+            [[1,1,1,1,1],[1,2,1,2,1],[1,2,1,1,1]],
+            [[2,1,1,1,1],[1,3,1,2,1],[1,2,1,1,1]],
+            [[2,1,1,1,1],[1,3,1,3,1],[1,2,2,1,1]],
+            [[2,1,1,1,1],[1,3,1,3,1],[1,4,4,1,1]],
+            [[2,1,1,1,1],[1,5,1,3,1],[1,6,6,1,1]]
+        ]
+    },
+    'multi-strong': {
+        mode: 'multiplier',
+        spins: [
+            [['?','?','?','?','?'],
+             ['0.5','?','?','?','collect'],
+             ['?','?','?','3','?']],
+            [['?','20','2','10','?'],
+             ['?','2','8','0.5','?'],
+             ['?','?','?','2','?']],
+            [['?','?','?','1','?'],
+             ['3','0.5','?','?','collect'],
+             ['?','1','?','?','collect']],
+            [['?','?','?','?','?'],
+             ['0.5','?','?','10','collect'],
+             ['1','?','?','?','?']],
+            [['?','?','?','?','?'],
+             ['?','3','?','?','collect'],
+             ['0.5','?','0.5','1','?']]
+        ],
+        multiplierGrids: [
+            [[1,2,1,1,1],[1,1,1,2,1],[1,1,2,1,1]],
+            [[1,3,1,1,1],[1,1,1,3,1],[1,1,3,1,1]],
+            [[1,5,1,1,1],[1,1,1,3,1],[1,1,3,1,1]],
+            [[3,5,1,1,1],[2,1,1,3,1],[1,1,3,1,1]],
+            [[3,8,1,1,1],[2,1,1,5,1],[1,1,3,1,1]]
+        ]
+    },
+    'blast-weak': {
+        mode: 'blast',
+        spins: [
+            [['?','2','?','?','?'],
+             ['2','?','?','0.5','?'],
+             ['5','?','?','0.5','?']],
+            [['?','5','?','?','?'],
+             ['?','?','?','1','?'],
+             ['?','?','?','?','?']],
+            [['1','blast-v','3','?','?'],
+             ['?','?','0.5','?','?'],
+             ['?','?','?','1','collect']],
+            [['?','?','?','?','?'],
+             ['?','?','0.5','?','?'],
+             ['?','?','0.5','?','?']],
+            [['?','?','?','?','collect'],
+             ['?','?','?','?','?'],
+             ['?','?','?','?','?']]
+        ],
+        afterBlast: [
+            null,
+            null,
+            [[['1','1','3','?','?'],
+              ['?','2','0.5','?','?'],
+              ['?','1','?','1','collect']]],
+            null,
+            null
+        ]
+    },
+    'blast-normal': {
+        mode: 'blast',
+        spins: [
+            [['?','?','?','?','?'],
+             ['0.5','?','?','?','collect'],
+             ['?','?','?','3','?']],
+            [['?','20','2','10','?'],
+             ['?','2','8','0.5','?'],
+             ['?','?','?','2','?']],
+            [['?','?','?','1','?'],
+             ['3','0.5','blast-9','?','?'],
+             ['?','1','?','?','collect']],
+            [['?','?','?','?','collect'],
+             ['?','?','?','?','?'],
+             ['?','?','?','?','?']],
+            [['?','?','blast-9','?','?'],
+             ['?','3','?','?','?'],
+             ['0.5','?','0.5','1','?']]
+        ],
+        afterBlast: [
+            null,
+            null,
+            [[['?','1','5','5','?'],
+              ['3','2','3','0.5','?'],
+              ['?','1','0.5','0.5','collect']]],
+            null,
+            null
+        ]
+    },
+    'blast-strong': {
+        mode: 'blast',
+        spins: [
+            [['?','?','?','?','?'],
+             ['0.5','?','?','?','collect'],
+             ['?','?','?','3','?']],
+            [['?','20','2','10','?'],
+             ['?','2','8','0.5','?'],
+             ['?','?','?','2','?']],
+            [['?','?','?','1','?'],
+             ['3','0.5','blast-9','?','?'],
+             ['?','1','?','?','collect']],
+            [['?','?','?','blast-v','?'],
+             ['0.5','?','?','10','collect'],
+             ['1','?','?','?','?']],
+            [['?','?','?','blast-9','?'],
+             ['?','3','blast-v','?','collect'],
+             ['0.5','?','0.5','1','?']]
+        ],
+        afterBlast: [
+            null,
+            null,
+            [[['?','1','5','5','?'],
+              ['3','2','3','0.5','?'],
+              ['?','1','0.5','0.5','collect']]],
+            [[['?','?','?','0.5','?'],
+              ['0.5','?','?','20','collect'],
+              ['1','?','?','0.5','?']]],
+            [[['?','?','1','blast-9','?'],
+              ['?','3','3','?','collect'],
+              ['0.5','?','3','1','?']],
+             [['?','?','3','2','3'],
+              ['?','3','5','2','collect'],
+              ['0.5','?','3','1','?']]]
+        ]
+    },
+    'all-weak': {
+        mode: 'all',
+        spins: [
+            [['?','2','?','?','?'],
+             ['0.5','2','?','?','?'],
+             ['0.5','?','8','1','?'],
+             ['2','?','?','0.5','?'],
+             ['5','?','?','0.5','?']],
+            [['?','5','?','?','?'],
+             ['3','?','?','?','?'],
+             ['2','?','?','0.5','?'],
+             ['?','blast-v','?','1','?'],
+             ['?','?','?','?','?']],
+            [['1','?','3','?','?'],
+             ['0.5','?','2','blast-9','?'],
+             ['1','?','0.5','?','collect'],
+             ['?','?','1','?','?'],
+             ['?','?','0.5','0.5','?']],
+            [['?','?','?','?','?'],
+             ['15','?','?','?','?'],
+             ['?','?','?','?','?'],
+             ['?','?','0.5','?','?'],
+             ['?','?','0.5','blast-v','?']],
+            [['?','?','?','?','collect'],
+             ['?','?','?','?','collect'],
+             ['?','?','?','?','collect'],
+             ['?','?','?','?','?'],
+             ['?','?','?','?','?']]
+        ],
+        afterBlast: [
+            null,
+            null,
+            [[['1','?','5','1','1'],
+              ['0.5','?','5','2','0.5'],
+              ['1','?','2','0.5','collect'],
+              ['?','?','1','?','?'],
+              ['?','?','0.5','0.5','?']]],
+            null,
+            null
+        ],
+        multiplierGrids: [
+            [[1,1,1,1,1],[1,2,1,1,1],[1,2,1,1,1],[1,1,1,1,1],[2,1,1,1,1]],
+            [[1,1,2,1,1],[1,4,1,1,1],[1,4,1,1,1],[1,1,1,1,1],[2,1,1,1,1]],
+            [[1,1,4,1,1],[3,4,2,1,1],[1,4,1,1,1],[1,1,1,1,1],[2,1,1,1,1]],
+            [[1,1,7,1,1],[3,4,2,1,1],[1,7,1,1,1],[1,1,1,3,1],[2,1,1,1,1]],
+            [[1,1,7,1,1],[4,4,2,2,1],[1,7,1,1,1],[1,1,1,5,1],[2,1,1,1,1]]
+        ]
+    },
+    'all-normal': {
+        mode: 'all',
+        spins: [
+            [['?','?','?','?','?'],
+             ['0.5','?','?','?','?'],
+             ['1','blast-v','?','?','?'],
+             ['2','?','?','0.5','?'],
+             ['?','?','?','3','?']],
+            [['?','20','2','10','?'],
+             ['?','2','8','0.5','?'],
+             ['?','0.5','?','0.5','?'],
+             ['?','0.5','?','1','?'],
+             ['?','?','?','2','?']],
+            [['?','?','?','1','?'],
+             ['3','0.5','?','?','?'],
+             ['2','0.5','?','?','?'],
+             ['?','1','?','?','collect'],
+             ['?','1','?','?','collect']],
+            [['2','?','?','?','?'],
+             ['0.5','?','?','10','?'],
+             ['1','?','?','3','?'],
+             ['1','?','?','3','?'],
+             ['1','?','?','?','?']],
+            [['?','?','?','?','?'],
+             ['?','2','blast-v','?','collect'],
+             ['0.5','2','0.5','blast-v','?'],
+             ['0.5','1','1','?','?'],
+             ['0.5','?','0.5','1','?']]
+        ],
+        afterBlast: [
+            null,
+            null,
+            null,
+            null,
+            [[['?','?','3','0.5','?'],
+              ['?','2','5','0.5','collect'],
+              ['0.5','2','3','2','?'],
+              ['0.5','1','2','2','?'],
+              ['0.5','?','2','5','?']]]
+        ],
+        multiplierGrids: [
+            [[1,1,1,1,1],[1,2,1,1,1],[1,2,1,1,1],[1,1,1,1,1],[2,1,1,1,1]],
+            [[1,1,2,1,1],[1,4,1,1,1],[1,4,1,1,1],[1,1,1,1,1],[2,1,1,1,1]],
+            [[1,1,4,1,1],[3,4,2,1,1],[1,4,1,1,1],[1,1,1,1,1],[2,1,1,1,1]],
+            [[1,1,7,1,1],[3,4,2,1,1],[1,7,1,1,1],[1,1,1,3,1],[2,1,1,1,1]],
+            [[1,1,7,1,1],[4,4,2,2,1],[1,7,1,1,1],[1,1,1,5,1],[2,1,1,1,1]]
+        ]
+    },
+    'all-strong': {
+        mode: 'all',
+        spins: [
+            [['?','?','?','?','?'],
+             ['0.5','?','?','?','collect'],
+             ['1','blast-v','?','?','?'],
+             ['2','?','?','0.5','?'],
+             ['?','?','?','3','?']],
+            [['?','20','2','10','?'],
+             ['?','2','8','0.5','?'],
+             ['?','0.5','?','0.5','?'],
+             ['?','0.5','?','1','?'],
+             ['?','?','?','2','?']],
+            [['?','?','?','1','?'],
+             ['3','0.5','?','?','?'],
+             ['2','0.5','?','?','?'],
+             ['?','1','?','?','collect'],
+             ['?','1','blast-9','?','collect']],
+            [['2','?','blast-9','?','?'],
+             ['0.5','?','?','10','?'],
+             ['1','?','?','3','?'],
+             ['1','?','?','3','collect'],
+             ['1','?','?','?','?']],
+            [['?','?','?','?','?'],
+             ['?','2','blast-v','?','collect'],
+             ['0.5','2','0.5','blast-v','?'],
+             ['0.5','1','1','?','?'],
+             ['0.5','?','0.5','1','?']]
+        ],
+        afterBlast: [
+            [[['?','1','?','?','?'],
+              ['0.5','1','?','?','collect'],
+              ['1','2','?','?','?'],
+              ['2','2','?','0.5','?'],
+              ['?','0.5','?','3','?']]],
+            null,
+            [[['?','?','?','1','?'],
+              ['3','0.5','?','?','?'],
+              ['2','0.5','?','?','?'],
+              ['?','5','2','0.5','collect'],
+              ['?','3','1','0.5','collect']]],
+            [[['2','3','1','1','?'],
+              ['0.5','0.5','1','20','?'],
+              ['1','?','?','3','?'],
+              ['1','?','?','3','collect'],
+              ['1','?','?','?','?']]],
+            [[['?','?','3','0.5','?'],
+              ['?','2','5','0.5','collect'],
+              ['0.5','2','3','2','?'],
+              ['0.5','1','2','2','?'],
+              ['0.5','?','2','5','?']]]
+        ],
+        multiplierGrids: [
+            [[1,1,1,1,1],[1,2,1,1,1],[1,2,1,1,1],[1,1,1,1,1],[2,1,1,1,1]],
+            [[1,1,2,1,1],[1,4,1,1,1],[1,4,1,1,1],[1,1,1,1,1],[2,1,1,1,1]],
+            [[1,1,4,1,1],[3,4,2,1,1],[1,4,1,1,1],[1,1,1,1,1],[2,1,1,1,1]],
+            [[1,1,7,1,1],[3,4,2,1,1],[1,7,1,1,1],[1,1,1,3,1],[2,1,1,1,1]],
+            [[1,1,7,1,1],[4,4,2,2,1],[1,7,1,1,1],[1,1,1,5,1],[2,1,1,1,1]]
+        ]
+    }
+};
+
+// === Symbol Definitions ===
+const LOW_SYMBOLS = ['10', 'J', 'Q', 'K', 'A'];
+const HIGH_SYMBOLS = ['mushroom', 'harp', 'horseshoe'];
+const CASH_TYPES = ['cash-bronze', 'cash-silver', 'cash-gold'];
+const CASH_VALUES = { 'cash-bronze': [2,3,5], 'cash-silver': [5,8,10], 'cash-gold': [10,15,20,25] };
+const JP_TYPES = ['MINI', 'MINOR', 'MAJOR', 'MEGA', 'GRAND'];
+const JP_VALUES = { 'MINI': 10, 'MINOR': 20, 'MAJOR': 50, 'MEGA': 200, 'GRAND': 1000 };
+const BLAST_TYPES = ['blast-v', 'blast-9'];
+
+const SYMBOL_DISPLAY = {
+    '10': '10', 'J': 'J', 'Q': 'Q', 'K': 'K', 'A': 'A',
+    'mushroom': '🍄', 'harp': '🎵', 'horseshoe': '🧲',
+    'wild': '🍀W', 'collect': '🧝<br>收集', 'collect-gold': '🧝✨<br>乘倍',
+    'cash-bronze': '🥉', 'cash-silver': '🥈', 'cash-gold': '🥇',
+    'plus-spin': '+SPIN',
+    'blast-v': '💥│', 'blast-9': '💥▣'
+};
+
+// === Utility ===
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function log(msg, cls = '') {
+    const el = document.getElementById('log');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry ' + cls;
+    entry.textContent = msg;
+    el.prepend(entry);
+}
+
+function updateInfo() {
+    document.getElementById('info-spins').textContent = '剩餘手數：' + state.spinsLeft;
+    document.getElementById('info-mode').textContent = '模式：' + state.mode.toUpperCase();
+    document.getElementById('info-win').textContent = '收集總分：' + state.totalWin;
+}
+
+// === Symbol Generation ===
+function generateSymbol(col) {
+    const r = Math.random();
+    // Last col = collector column + can have +SPIN
+    if (col === state.cols - 1) {
+        // +SPIN only appears on col 5 (last col) in expand mode
+        if ((state.mode === 'expand' || state.mode === 'all') && r < 0.08) {
+            return { type: 'plus-spin' };
+        }
+        if (r < 0.35) {
+            if ((state.mode === 'multiplier' || state.mode === 'all') && Math.random() < 0.4) {
+                return { type: 'collect-gold', mult: rand(2, 5) };
+            }
+            return { type: 'collect' };
+        }
+        // Otherwise normal symbols on last col too
+        if (Math.random() < 0.4) return { type: pick(HIGH_SYMBOLS) };
+        return { type: pick(LOW_SYMBOLS) };
+    }
+    // Cash symbols (cols 0 to cols-2)
+    if (r < 0.22) {
+        const cashType = pick(CASH_TYPES);
+        if (Math.random() < 0.04) {
+            return { type: cashType, jp: pick(JP_TYPES), value: 0 };
+        }
+        return { type: cashType, value: pick(CASH_VALUES[cashType]) };
+    }
+    // Blast symbols
+    if ((state.mode === 'blast' || state.mode === 'all') && r < 0.30) {
+        return { type: pick(BLAST_TYPES) };
+    }
+    // Regular
+    if (Math.random() < 0.4) return { type: pick(HIGH_SYMBOLS) };
+    return { type: pick(LOW_SYMBOLS) };
+}
+
+function generateBoard() {
+    state.board = [];
+    for (let r = 0; r < state.rows; r++) {
+        const row = [];
+        for (let c = 0; c < state.cols; c++) {
+            row.push(generateSymbol(c));
+        }
+        state.board.push(row);
+    }
+}
+
+// === Rendering ===
+function getCellHTML(sym, row, col) {
+    let display = SYMBOL_DISPLAY[sym.type] || sym.type;
+    let cssClass = 'sym-' + sym.type;
+    if (sym.type.startsWith('cash-') && sym.value) {
+        display += '<br>' + sym.value;
+    }
+    if (sym.type.startsWith('cash-') && sym.jp) {
+        // JP uses gold pot style
+        display = '🥇<br>' + sym.jp;
+        cssClass = 'sym-cash-gold';
+    }
+    let multBadge = '';
+    // Only show multiplier badge for real cells (row >= 0) with valid position
+    if (row >= 0 && state.multipliers[row] && state.multipliers[row][col] > 0) {
+        multBadge = `<div class="multiplier-badge">${state.multipliers[row][col]}x</div>`;
+    }
+    return `<div class="cell ${cssClass}" id="cell-${row}-${col}">
+        <span class="sym-text">${display}</span>${multBadge}
+    </div>`;
+}
+
+function renderBoard() {
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+    for (let c = 0; c < state.cols; c++) {
+        const reel = document.createElement('div');
+        reel.className = 'reel';
+        reel.id = `reel-${c}`;
+        reel.style.height = (state.rows * 94) + 'px'; // 90 + 4 gap
+        const inner = document.createElement('div');
+        inner.className = 'reel-inner';
+        inner.id = `reel-inner-${c}`;
+        for (let r = 0; r < state.rows; r++) {
+            inner.innerHTML += getCellHTML(state.board[r][c], r, c);
+        }
+        reel.appendChild(inner);
+        boardEl.appendChild(reel);
+    }
+}
+
+// === Reel Spin Animation ===
+async function animateReelSpin() {
+    const cellH = 94; // cell height + gap
+    const spinSymbolCount = 12; // how many random symbols scroll through
+
+    // For each reel: final symbols on top, random symbols below
+    // Start position: shifted UP so random symbols are visible
+    // Animate DOWN to show final symbols (正轉: symbols fall from above)
+    for (let c = 0; c < state.cols; c++) {
+        const reel = document.getElementById(`reel-${c}`);
+        reel.style.overflow = 'hidden';
+        const inner = document.getElementById(`reel-inner-${c}`);
+
+        // Build strip: final result at top, then random symbols below
+        let spinHTML = '';
+        // Final symbols first (these will be revealed)
+        for (let r = 0; r < state.rows; r++) {
+            spinHTML += getCellHTML(state.board[r][c], r, c);
+        }
+        // Random symbols below (these are shown during spin)
+        for (let i = 0; i < spinSymbolCount; i++) {
+            const fakeSym = generateSymbol(c);
+            spinHTML += getCellHTML(fakeSym, -1, c);
+        }
+        inner.innerHTML = spinHTML;
+
+        // Start position: show the random symbols (shifted up so bottom part visible)
+        const startY = -(state.rows * cellH);
+        inner.style.transition = 'none';
+        inner.style.transform = `translateY(${startY}px)`;
+    }
+
+    // Force reflow
+    void document.getElementById('board').offsetHeight;
+
+    // Animate each reel to translateY(0) to reveal final symbols at top
+    for (let c = 0; c < state.cols; c++) {
+        const inner = document.getElementById(`reel-inner-${c}`);
+        const duration = 0.6 + c * 0.15;
+
+        inner.style.transition = `transform ${duration}s cubic-bezier(0.2, 0.8, 0.3, 1.02)`;
+        inner.style.transform = `translateY(0px)`;
+    }
+
+    // Wait for all reels to stop
+    const totalDuration = 600 + (state.cols - 1) * 150 + 400;
+    await sleep(totalDuration);
+
+    // Clean up: re-render with just final symbols
+    renderBoard();
+}
+
+// === Parse Demo Cell ===
+function parseDemoCell(cellStr) {
+    const s = cellStr.trim().toLowerCase();
+    if (s === '?' || s === '') {
+        // Random normal symbol
+        if (Math.random() < 0.4) return { type: pick(HIGH_SYMBOLS) };
+        return { type: pick(LOW_SYMBOLS) };
+    }
+    if (s === 'collect') {
+        return { type: 'collect' };
+    }
+    if (s === 'collect-gold' || s === 'gold-collect') {
+        return { type: 'collect-gold', mult: rand(2, 5) };
+    }
+    if (s === '+spin' || s === 'plus-spin') {
+        return { type: 'plus-spin' };
+    }
+    // Blast symbols
+    if (s === 'blast-v' || s === 'columnb') {
+        return { type: 'blast-v' };
+    }
+    if (s === 'blast-9' || s === 'aroundb') {
+        return { type: 'blast-9' };
+    }
+    // Check if it's a number (cash symbol)
+    const num = parseFloat(s);
+    if (!isNaN(num)) {
+        // Determine cash type by value
+        let cashType = 'cash-bronze';  // 0.5~1
+        if (num >= 5) cashType = 'cash-gold';  // 5+
+        else if (num >= 2) cashType = 'cash-silver';  // 2~3
+        return { type: cashType, value: num };
+    }
+    // Check JP types
+    if (['mini','minor','major','mega','grand'].includes(s)) {
+        return { type: 'cash-gold', jp: s.toUpperCase(), value: 0 };
+    }
+    // Fallback: random
+    if (Math.random() < 0.4) return { type: pick(HIGH_SYMBOLS) };
+    return { type: pick(LOW_SYMBOLS) };
+}
+
+function generateBoardFromScript(spinData) {
+    state.board = [];
+    for (let r = 0; r < state.rows; r++) {
+        const row = [];
+        for (let c = 0; c < state.cols; c++) {
+            if (spinData[r] && spinData[r][c] !== undefined) {
+                row.push(parseDemoCell(spinData[r][c]));
+            } else {
+                row.push(generateSymbol(c));
+            }
+        }
+        state.board.push(row);
+    }
+}
+
+// === Game Flow ===
+function startFreeGame() {
+    const demoValue = document.getElementById('demo-select').value;
+
+    if (demoValue === 'random') {
+        state.demoMode = null;
+        state.mode = document.getElementById('mode-select').value;
+    } else {
+        state.demoMode = demoValue;
+        const script = DEMO_SCRIPTS[demoValue];
+        state.mode = script.mode;
+        // Auto-set mode dropdown
+        document.getElementById('mode-select').value = script.mode;
+    }
+
+    state.demoSpinIndex = 0;
+    state.spinsLeft = 5;
+    state.totalWin = 0;
+    state.gameActive = true;
+    state.isSpinning = false;
+
+    // 基本盤面 5軸×3行，EXPAND/三特色 擴張為 5軸×5行
+    state.cols = 5;
+    if (state.mode === 'expand' || state.mode === 'all') {
+        state.rows = 5;
+        log('🔥 EXPAND 啟動！盤面擴張為 5軸×5行', 'feature');
+    } else {
+        state.rows = 3;
+    }
+
+    state.multipliers = Array.from({length: state.rows}, () => Array(state.cols).fill(0));
+    document.getElementById('log').innerHTML = '';
+
+    if (state.demoMode) {
+        log(`📋 DEMO 模式：${demoValue}`, 'feature');
+    }
+    log('🎰 Free Game 開始！模式：' + state.mode.toUpperCase() + '，共 5 手', 'feature');
+
+    document.getElementById('btn-start').disabled = true;
+    document.getElementById('btn-spin').disabled = false;
+
+    // Generate initial board display (random placeholder)
+    generateBoard();
+    renderBoard();
+    updateInfo();
+}
+
+async function doSpin() {
+    if (state.isSpinning || state.spinsLeft <= 0) return;
+    state.isSpinning = true;
+    document.getElementById('btn-spin').disabled = true;
+
+    // Generate result first (from script or random)
+    if (state.demoMode) {
+        const script = DEMO_SCRIPTS[state.demoMode];
+        const spinIdx = state.demoSpinIndex;
+        if (spinIdx < script.spins.length) {
+            generateBoardFromScript(script.spins[spinIdx]);
+        } else {
+            generateBoard();
+        }
+        state.demoSpinIndex++;
+    } else {
+        generateBoard();
+    }
+
+    // Animate reel spin
+    await animateReelSpin();
+
+    state.spinsLeft--;
+    log(`--- 第 ${5 - state.spinsLeft} 手 ---`);
+
+    // === Feature Processing ===
+    // 1. BLAST (先爆炸)
+    if (state.mode === 'blast' || state.mode === 'all') {
+        if (state.demoMode && DEMO_SCRIPTS[state.demoMode].afterBlast) {
+            const script = DEMO_SCRIPTS[state.demoMode];
+            const spinIdx = state.demoSpinIndex - 1;
+            const afterData = script.afterBlast[spinIdx];
+            if (afterData) {
+                // Show blast announcement
+                log('🔥🔥🔥 觸發爆炸 🔥🔥🔥', 'blast');
+                const announce = document.createElement('div');
+                announce.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);color:#e67e22;font-size:2.5em;font-weight:bold;padding:20px 50px;border-radius:12px;border:3px solid #e67e22;z-index:999;text-shadow:0 0 10px #e67e22;';
+                announce.textContent = '💥 觸發爆炸 💥';
+                document.body.appendChild(announce);
+                await sleep(1200);
+                document.body.removeChild(announce);
+
+                // Process each blast stage
+                for (let stage = 0; stage < afterData.length; stage++) {
+                    // Show explosion effects on current blast symbols
+                    for (let r = 0; r < state.rows; r++) {
+                        for (let c = 0; c < state.cols; c++) {
+                            if (state.board[r][c].type === 'blast-v' || state.board[r][c].type === 'blast-9') {
+                                const cellEl = document.getElementById(`cell-${r}-${c}`);
+                                if (cellEl) {
+                                    const fx = document.createElement('div');
+                                    fx.className = 'explosion-effect';
+                                    cellEl.appendChild(fx);
+                                }
+                                log(`💥 ${SYMBOL_DISPLAY[state.board[r][c].type]} 在 [${r+1},${c+1}] 爆炸！`, 'blast');
+                            }
+                        }
+                    }
+                    await sleep(600);
+
+                    // Apply this stage's board
+                    generateBoardFromScript(afterData[stage]);
+                    renderBoard();
+                    await sleep(500);
+                }
+            }
+        } else {
+            await processBlast();
+        }
+    }
+    // 2. MULTIPLIER (再乘倍) — DEMO模式下由腳本控制，只顯示提示
+    if (state.mode === 'multiplier' || state.mode === 'all') {
+        if (state.demoMode && DEMO_SCRIPTS[state.demoMode].multiplierGrids) {
+            // 顯示提示
+            log('⚡⚡⚡ 觸發乘倍 ⚡⚡⚡', 'feature');
+            const announce = document.createElement('div');
+            announce.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);color:#ffd700;font-size:2.5em;font-weight:bold;padding:20px 50px;border-radius:12px;border:3px solid #ffd700;z-index:999;text-shadow:0 0 10px #ffd700;';
+            announce.textContent = '⚡ 觸發乘倍 ⚡';
+            document.body.appendChild(announce);
+            await sleep(1200);
+            document.body.removeChild(announce);
+            // 觸發後才套用本手的乘倍表格
+            const script = DEMO_SCRIPTS[state.demoMode];
+            const spinIdx = state.demoSpinIndex - 1; // demoSpinIndex already incremented
+            if (script.multiplierGrids && spinIdx < script.multiplierGrids.length) {
+                const grid = script.multiplierGrids[spinIdx];
+                for (let r = 0; r < state.rows; r++) {
+                    for (let c = 0; c < state.cols; c++) {
+                        if (grid[r] && grid[r][c] !== undefined) {
+                            state.multipliers[r][c] = grid[r][c] > 1 ? grid[r][c] : 0;
+                        }
+                    }
+                }
+            }
+            renderBoard();
+            await sleep(400);
+        } else {
+            await processMultiplier();
+        }
+    }
+    // 3. +SPIN
+    if (state.mode === 'expand' || state.mode === 'all') {
+        checkPlusSpin();
+    }
+    // 4. Collect
+    await processCollect();
+
+    updateInfo();
+
+    if (state.spinsLeft <= 0) {
+        log('🏁 Free Game 結束！總收集分數：' + state.totalWin, 'feature');
+        document.getElementById('btn-spin').disabled = true;
+        document.getElementById('btn-start').disabled = false;
+        state.gameActive = false;
+    } else {
+        document.getElementById('btn-spin').disabled = false;
+    }
+    state.isSpinning = false;
+}
+
+// === MULTIPLIER Feature ===
+async function processMultiplier() {
+    // Show "觸發乘倍" announcement
+    log('⚡⚡⚡ 觸發乘倍 ⚡⚡⚡', 'feature');
+    const announce = document.createElement('div');
+    announce.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);color:#ffd700;font-size:2.5em;font-weight:bold;padding:20px 50px;border-radius:12px;border:3px solid #ffd700;z-index:999;text-shadow:0 0 10px #ffd700;';
+    announce.textContent = '⚡ 觸發乘倍 ⚡';
+    document.body.appendChild(announce);
+    await sleep(1200);
+    document.body.removeChild(announce);
+
+    const count = rand(1, 3);
+    for (let i = 0; i < count; i++) {
+        const r = rand(0, state.rows - 1);
+        const c = rand(0, state.cols - 2);
+        if (state.multipliers[r][c] > 0) {
+            const inc = rand(1, 3);
+            state.multipliers[r][c] += inc;
+            log(`⚡ [${r+1},${c+1}] 乘倍 +${inc}x → ${state.multipliers[r][c]}x`, 'feature');
+        } else {
+            state.multipliers[r][c] = rand(2, 20);
+            log(`⚡ [${r+1},${c+1}] 獲得 ${state.multipliers[r][c]}x 乘倍`, 'feature');
+        }
+    }
+    renderBoard();
+    await sleep(400);
+}
+
+// === BLAST Feature ===
+async function processBlast() {
+    // Check if there are any blast symbols first
+    let hasBlast = false;
+    for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols; c++) {
+            const sym = state.board[r][c];
+            if (sym.type === 'blast-v' || sym.type === 'blast-9') {
+                hasBlast = true;
+                break;
+            }
+        }
+        if (hasBlast) break;
+    }
+    if (!hasBlast) return;
+
+    // Show "觸發爆炸" announcement
+    log('🔥🔥🔥 觸發爆炸 🔥🔥🔥', 'blast');
+    const announce = document.createElement('div');
+    announce.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);color:#e67e22;font-size:2.5em;font-weight:bold;padding:20px 50px;border-radius:12px;border:3px solid #e67e22;z-index:999;text-shadow:0 0 10px #e67e22;';
+    announce.textContent = '💥 觸發爆炸 💥';
+    document.body.appendChild(announce);
+    await sleep(1200);
+    document.body.removeChild(announce);
+
+    // Process explosions
+    for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols; c++) {
+            const sym = state.board[r][c];
+            if (sym.type === 'blast-v' || sym.type === 'blast-9') {
+                const cellEl = document.getElementById(`cell-${r}-${c}`);
+                if (cellEl) {
+                    const fx = document.createElement('div');
+                    fx.className = 'explosion-effect';
+                    cellEl.appendChild(fx);
+                }
+                const positions = getBlastPositions(r, c, sym.type);
+                log(`💥 ${SYMBOL_DISPLAY[sym.type]} 在 [${r+1},${c+1}] 爆炸！`, 'blast');
+
+                for (const [br, bc] of positions) {
+                    if (br >= 0 && br < state.rows && bc >= 0 && bc < state.cols - 1) {
+                        if (state.board[br][bc].type.startsWith('cash-')) {
+                            state.board[br][bc].value = (state.board[br][bc].value || 0) + rand(2, 5);
+                            log(`  ↑ [${br+1},${bc+1}] Cash提升至 ${state.board[br][bc].value}`, 'blast');
+                        } else if (!state.board[br][bc].type.startsWith('blast') &&
+                                   state.board[br][bc].type !== 'collect' &&
+                                   state.board[br][bc].type !== 'collect-gold') {
+                            const ct = pick(CASH_TYPES);
+                            state.board[br][bc] = { type: ct, value: pick(CASH_VALUES[ct]) };
+                            log(`  → [${br+1},${bc+1}] 產生Cash ${state.board[br][bc].value}`, 'blast');
+                        }
+                    }
+                }
+                const selfCash = pick(CASH_TYPES);
+                state.board[r][c] = { type: selfCash, value: pick(CASH_VALUES[selfCash]) };
+            }
+        }
+    }
+    await sleep(600);
+    renderBoard();
+    await sleep(400);
+}
+
+function getBlastPositions(r, c, type) {
+    const pos = [];
+    if (type === 'blast-v') {
+        for (let rr = 0; rr < state.rows; rr++) pos.push([rr, c]);
+    } else if (type === 'blast-9') {
+        for (let dr = -1; dr <= 1; dr++)
+            for (let dc = -1; dc <= 1; dc++)
+                pos.push([r + dr, c + dc]);
+    }
+    return pos;
+}
+
+// === +SPIN Check ===
+function checkPlusSpin() {
+    for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols; c++) {
+            if (state.board[r][c].type === 'plus-spin') {
+                state.spinsLeft++;
+                log('🎁 +SPIN！手數 +1 → ' + state.spinsLeft, 'feature');
+            }
+        }
+    }
+}
+
+// === Collect Feature with BINGO animation ===
+async function processCollect() {
+    let collectorCount = 0;
+    let isGold = false;
+    let goldMult = 1;
+
+    for (let r = 0; r < state.rows; r++) {
+        const sym = state.board[r][state.cols - 1];
+        if (sym.type === 'collect') collectorCount++;
+        if (sym.type === 'collect-gold') {
+            collectorCount++;
+            isGold = true;
+            goldMult = sym.mult || rand(2, 5);
+        }
+    }
+
+    if (collectorCount === 0) {
+        log('  ❌ 第5軸無收集器', '');
+        return;
+    }
+
+    // Find cash symbols
+    let cashCells = [];
+    for (let r = 0; r < state.rows; r++) {
+        for (let c = 0; c < state.cols - 1; c++) {
+            if (state.board[r][c].type.startsWith('cash-')) {
+                cashCells.push({r, c, sym: state.board[r][c]});
+            }
+        }
+    }
+
+    if (cashCells.length === 0) {
+        log('  ⚪ 無Cash可收集', '');
+        return;
+    }
+
+    // BINGO animation: highlight collector and all cash simultaneously
+    for (let r = 0; r < state.rows; r++) {
+        const sym = state.board[r][state.cols - 1];
+        if (sym.type === 'collect' || sym.type === 'collect-gold') {
+            const el = document.getElementById(`cell-${r}-${state.cols - 1}`);
+            if (el) el.classList.add('bingo');
+        }
+    }
+    for (const {r, c} of cashCells) {
+        const el = document.getElementById(`cell-${r}-${c}`);
+        if (el) el.classList.add('bingo');
+    }
+
+    // Wait for BINGO animation to play
+    await sleep(1000);
+
+    // Calculate collected values (each collector collects all cash once)
+    let singleCollect = 0;
+    for (const {r, c, sym} of cashCells) {
+        let val = sym.value || 0;
+        if (sym.jp) {
+            val = JP_VALUES[sym.jp] || 0;
+            log(`  💎 ${sym.jp} Jackpot = ${val}`, 'collect');
+        }
+        const cellMult = state.multipliers[r] ? state.multipliers[r][c] : 0;
+        if (cellMult > 0) {
+            const old = val;
+            val *= cellMult;
+            log(`  ✖️ [${r+1},${c+1}] ${old} × ${cellMult}x = ${val}`, 'collect');
+        }
+        if (isGold) {
+            const old = val;
+            val *= goldMult;
+            log(`  🧝✨ 黃金收集 ${old} × ${goldMult}x = ${val}`, 'collect');
+        }
+        singleCollect += val;
+    }
+
+    const collected = singleCollect * collectorCount;
+    if (collectorCount > 1) {
+        log(`  🧝 ${collectorCount} 個收集器各收集一次：${singleCollect} × ${collectorCount} = ${collected}`, 'collect');
+    }
+
+    log(`  ✅ 收集 ${collected} 分（${cashCells.length} 個Cash）`, 'collect');
+    state.totalWin += collected;
+
+    // Remove bingo class
+    document.querySelectorAll('.cell.bingo').forEach(el => el.classList.remove('bingo'));
+}
+</script>
+</body>
+</html>
